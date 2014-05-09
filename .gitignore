@@ -26,5 +26,3 @@ _testmain.go
 *.exe
 *.test
 
-# ignore go api, down from github
-src/github.com/qiniu
