@@ -20,9 +20,16 @@ type Result struct {
 	Results []IPResult `json:"results"`
 }
 
-func Check(ips []string, domain, path string) (ret Result) {
-	ret.Path = path
-	ret.Domain = domain
+func calcSlice(length, goroutines int) int {
+	count := length / goroutines
+	mode := length % goroutines
+	if mode == 0 {
+		return count
+	}
+	return count + 1
+}
+
+func job(ips []string, domain, path string, send chan<- IPResult) {
 	client := http.DefaultClient
 	client.Transport = &http.Transport{
 		ResponseHeaderTimeout: time.Second * 30,
@@ -51,7 +58,33 @@ func Check(ips []string, domain, path string) (ret Result) {
 				resp.Body.Close()
 			}
 		}
-		ret.Results = append(ret.Results, result)
+		send <- result
 	}
+}
+
+func Check(ips []string, domain, path string, goroutines int) (ret Result) {
+	if goroutines == 0 {
+		goroutines = 1
+	}
+	ret.Path = path
+	ret.Domain = domain
+	length := len(ips)
+	receiver := make(chan IPResult, length)
+	count := calcSlice(len(ips), goroutines)
+	for i := 0; i < goroutines; i++ {
+		start := count * i
+		if start >= length {
+			break
+		}
+		end := count * (i + 1)
+		if end >= length {
+			end = length
+		}
+		go job(ips[start:end], domain, path, receiver)
+	}
+	for j := 0; j < length; j++ {
+		ret.Results = append(ret.Results, <-receiver)
+	}
+
 	return
 }

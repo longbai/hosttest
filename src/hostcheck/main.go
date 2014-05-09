@@ -12,6 +12,7 @@ func main() {
 	domain := flag.String("d", "", "domain")
 	path := flag.String("p", "", "path, key or key+fop+token")
 	ipFile := flag.String("ips", "", "ip file")
+	goroutines := flag.Int("g", 0, "go routines")
 	flag.Parse()
 	if *domain == "" || *path == "" || *ipFile == "" {
 		flag.PrintDefaults()
@@ -29,7 +30,10 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	ret := Check(ips, *domain, *path)
+	if *goroutines == 0 {
+		*goroutines = 64
+	}
+	ret := Check(ips, *domain, *path, *goroutines)
 	out, err := json.MarshalIndent(ret, "", "")
 	if err != nil {
 		fmt.Println(err)
